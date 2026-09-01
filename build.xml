@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="HorariosMVC" default="default" basedir=".">
+    <description>Sistema de Horarios — Arquitectura MVC</description>
+
+    <!-- Importa el build de NetBeans (este es el que realmente se usa) -->
+    <import file="nbproject/build-impl.xml"/>
+
+    <!--
+        Override de -post-jar: después de que NetBeans construye el JAR,
+        parcheamos el MANIFEST para incluir el AbsoluteLayout en el Class-Path.
+    -->
+    <target name="-post-jar">
+        <jar destfile="${dist.jar}" update="true">
+            <manifest>
+                <attribute name="Class-Path"
+                           value="lib/postgresql-42.5.4.jar lib/AbsoluteLayout-RELEASE140.jar"/>
+            </manifest>
+        </jar>
+        <echo>Manifest parcheado: AbsoluteLayout incluido en Class-Path.</echo>
+    </target>
+
+</project>
