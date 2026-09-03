@@ -34,6 +34,7 @@ public class GruposWindow extends javax.swing.JFrame {
     
     // <-- NUEVA VARIABLE PARA LOS PROFESORES -->
     private List<Profesor> listaProfesoresTutor = new ArrayList<>();
+    private List<Grupo> listaGruposActuales = new ArrayList<>();
 
     public GruposWindow(MainWindow mainWindow, int userId) {
         this.mainWindow = mainWindow;
@@ -140,14 +141,17 @@ public class GruposWindow extends javax.swing.JFrame {
 
     // Este método limpia la tabla y mete solo los grupos encontrados
     private void cargarResultadosBusqueda(java.util.List<Grupo> lista) {
-        tableModel.setRowCount(0); // Limpiar la tabla
-        for (Grupo g : lista) {
+    tableModel.setRowCount(0); 
+    listaGruposActuales = lista; // Guardar la lista filtrada
+    if (listaGruposActuales != null) {
+        for (Grupo g : listaGruposActuales) {
             tableModel.addRow(new Object[]{
                 g.getId(), g.getNombre(), g.getCodigo(),
                 g.getEspecialidadNombre(), g.getSemestre(), g.getTurno(), g.getCapacidad()
             });
         }
     }
+}
 
     private void agregar() {
         Grupo grupo = leerFormulario(0);
@@ -240,34 +244,60 @@ public class GruposWindow extends javax.swing.JFrame {
     }
 
     private void cargarDatos() {
-        tableModel.setRowCount(0);
-        for (Grupo g : grupoController.obtenerTodos()) {
+    tableModel.setRowCount(0);
+    listaGruposActuales = grupoController.obtenerTodos(); // Guardar copia de los objetos Grupo
+    if (listaGruposActuales != null) {
+        for (Grupo g : listaGruposActuales) {
             tableModel.addRow(new Object[]{
                 g.getId(), g.getNombre(), g.getCodigo(),
                 g.getEspecialidadNombre(), g.getSemestre(), g.getTurno(), g.getCapacidad()
             });
         }
     }
+}
 
     private void cargarSeleccionado() {
-        int row = jTable1.getSelectedRow();
-        if (row == -1) return;
-        
-        NombreGrupo.setText((String) tableModel.getValueAt(row, 1));
-        Codigo.setText((String) tableModel.getValueAt(row, 2));
-        Semestre.setValue(tableModel.getValueAt(row, 4));
-        Turno1.setSelectedItem(tableModel.getValueAt(row, 5)); // CORRECCIÓN AQUÍ
-        Capacidad.setValue(tableModel.getValueAt(row, 6));
+    int row = jTable1.getSelectedRow();
+    if (row == -1 || row >= listaGruposActuales.size()) return;
 
-        String nombreEsp = (String) tableModel.getValueAt(row, 3);
+    // Obtener el objeto Grupo directamente
+    Grupo g = listaGruposActuales.get(row);
+
+    NombreGrupo.setText(g.getNombre());
+    Codigo.setText(g.getCodigo());
+    Semestre.setValue(g.getSemestre());
+    Turno1.setSelectedItem(g.getTurno());
+    Capacidad.setValue(g.getCapacidad());
+
+    // 1. Seleccionar Especialidad
+    String nombreEsp = g.getEspecialidadNombre();
+    if (nombreEsp != null) {
         for (int i = 0; i < this.Especialidad.getItemCount(); i++) {
             Especialidad esp = (Especialidad) (Object) this.Especialidad.getItemAt(i);
-            if (esp.getNombre().equals(nombreEsp)) {
+            if (esp != null && nombreEsp.equals(esp.getNombre())) {
                 this.Especialidad.setSelectedIndex(i);
                 break;
             }
         }
     }
+
+    // 2. Seleccionar Tutor en el JComboBox mediante el idTutor
+    if (g.getIdTutor() != null && listaProfesoresTutor != null) {
+        boolean encontrado = false;
+        for (int i = 0; i < listaProfesoresTutor.size(); i++) {
+            Profesor p = listaProfesoresTutor.get(i);
+            if (p.getId() == g.getIdTutor()) {
+                // Se suma 1 porque el índice 0 del JComboBox es "Sin Tutor"
+                Tutor.setSelectedIndex(i + 1); 
+                encontrado = true;
+                break;
+            }
+        }
+        if (!encontrado) Tutor.setSelectedIndex(0);
+    } else {
+        Tutor.setSelectedIndex(0); // Default: "Sin Tutor"
+    }
+}
 
     private void limpiar() {
         NombreGrupo.setText("");
