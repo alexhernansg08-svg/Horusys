@@ -33,7 +33,7 @@ import java.awt.Color;
  * @author axelp
  */
 public class HorariosWindow extends javax.swing.JFrame {
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(HorariosWindow.class.getName());
+     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(HorariosWindow.class.getName());
 
     private MainWindow mainWindow;
     private int usuarioId;
@@ -351,7 +351,11 @@ jTable1.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
         String tipo = (String) VerHorario.getSelectedItem();
         String sel  = (String) Seleccionar.getSelectedItem();
 
-        if (sel == null || sel.startsWith("(")) {
+        // "General" no depende de una seleccion real: su unico item del combo es
+        // el placeholder "(todos los grupos)", que tambien empieza con "(" igual
+        // que los placeholders de "sin datos" ("(vacio)"). Por eso se excluye
+        // aqui explicitamente, o el chequeo de abajo bloqueaba siempre la vista General.
+        if (!"General".equals(tipo) && (sel == null || sel.startsWith("("))) {
             tableModel.addRow(new Object[]{"—", "Presione GENERAR HORARIO para crear el horario.", "", "", "", ""});
             return;
         }

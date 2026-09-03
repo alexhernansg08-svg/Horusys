@@ -174,6 +174,7 @@ public class HorarioConsultaDAO {
 
             try (ResultSet rs = st.executeQuery(
                     "SELECT grupo, dia, hora, COUNT(*) AS cnt FROM horario_grupos " +
+                    "WHERE grupo <> '(Actividad)' " + // no es un grupo real: no debe validarse como choque de grupo
                     "GROUP BY grupo, dia, hora HAVING COUNT(*) > 1 ORDER BY grupo, dia, hora")) {
                 while (rs.next())
                     p.add(String.format("CHOQUE GRUPO: %s tiene %d clases el %s a las %s",

@@ -77,5 +77,7 @@ public class Main {
         }
         // Si todos los candidatos fallan, Swing usa Metal (tema por defecto)
         //  ACTUALIZACION MODELOS DE GRUPOS
+        //casi terminaom
     }
+    
 }

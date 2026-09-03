@@ -275,6 +275,20 @@ public class HorarioDAO {
             String etiqueta = bp.grupo() + ": " + bp.materia();
             hGeneral.computeIfAbsent(bp.hora(), k -> new LinkedHashMap<>()).merge(bp.dia(), etiqueta, (prev, n) -> prev + " / " + n);
         }
+
+        /**
+         * Igual que acumularBloque(), pero SOLO para actividades complementarias:
+         * no existe un grupo real, asi que NO se agrega a pendingGrupo/horario_grupos.
+         * Insertar ahi un grupo ficticio compartido ("(Actividad)") causaba falsos
+         * "CHOQUE GRUPO" en el validador cada vez que 2+ profesores tenian actividad
+         * a la misma hora (algo normal, no un choque real).
+         */
+        void acumularBloqueActividad(BloqueProfesor bp) {
+            pendingProf.add(bp);
+
+            String etiqueta = "(Actividad): " + bp.materia() + " [" + bp.nombreProfesor() + "]";
+            hGeneral.computeIfAbsent(bp.hora(), k -> new LinkedHashMap<>()).merge(bp.dia(), etiqueta, (prev, n) -> prev + " / " + n);
+        }
     }
 
     // ===============================================================
@@ -307,14 +321,6 @@ public class HorarioDAO {
 
             // [PASO 4] Obtener lista de todos los grupos a procesar
             List<GrupoSlot> grupos = cargarGrupos(conn);
-
-            // Prioridad de GRUPO: los grupos con mas horas-clase totales a la
-            // semana se agendan PRIMERO. Confirmado con el plantel: son los mas
-            // dificiles de encajar (menos margen/holgura en la cuadricula), asi
-            // que conviene "apartarles" horario mientras hay mas huecos libres
-            // y profesores disponibles. Los grupos mas ligeros, que caben en
-            // casi cualquier hueco, se dejan al final.
-            grupos.sort(Comparator.comparingInt((GrupoSlot g) -> totalHorasGrupo(g, ctx)).reversed());
 
             // [PASO 5] Procesar cada grupo: asignar materias y profesores
             int total = grupos.size(), idx = 0;
@@ -467,12 +473,12 @@ public class HorarioDAO {
         }
 
         // Instruccion 2: llenar los sets de materias por profesor.
-        // NOTA: la tabla real profesor_materia solo tiene (profesor_id, materia_id) —
-        // no existe columna grupo_id. Por lo tanto matGrupos siempre queda con un Set
-        // vacio para cada materia, lo que procesarMateria() ya interpreta como
-        // "puede impartir esta materia a CUALQUIER grupo elegible" (ver mas abajo).
+        // profesor_materia ahora SI tiene grupo_id (columna agregada a proposito):
+        // si viene NULL, el profesor puede dar esa materia a CUALQUIER grupo elegible
+        // (compatibilidad con asignaciones viejas); si trae un grupo especifico, el
+        // profesor SOLO puede impartir esa materia a ese grupo puntual.
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT profesor_id, materia_id FROM profesor_materia");
+                "SELECT profesor_id, materia_id, grupo_id FROM profesor_materia");
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 ProfesorSlot prof = idx.get(rs.getInt("profesor_id"));
@@ -481,8 +487,14 @@ public class HorarioDAO {
                 int matId = rs.getInt("materia_id");
                 prof.materias().add(matId); // agregar materia al set del profe
 
-                // Sin grupo especifico: set vacio = puede dar la materia a cualquier grupo
-                prof.matGrupos().putIfAbsent(matId, new HashSet<>());
+                int grupoId = rs.getInt("grupo_id");
+                if (!rs.wasNull()) {
+                    // Grupo especifico: solo puede dar esa materia a ese grupo
+                    prof.matGrupos().computeIfAbsent(matId, k -> new HashSet<>()).add(grupoId);
+                } else {
+                    // Sin grupo especifico: set vacio = puede dar la materia a cualquier grupo
+                    prof.matGrupos().putIfAbsent(matId, new HashSet<>());
+                }
             }
         }
     }
@@ -546,17 +558,6 @@ public class HorarioDAO {
             }
         }
         return map;
-    }
-
-    /**
-     * Suma las horas_semanales de todas las materias que le tocan a un grupo,
-     * segun su especialidad+semestre (misma clave que usa procesarGrupo()).
-     * Es el criterio de PRIORIDAD DE GRUPO: a mayor carga total, se agenda antes.
-     */
-    private int totalHorasGrupo(GrupoSlot g, Contexto ctx) {
-        String clave = g.especialidadId() + "|" + g.semestre();
-        return ctx.materiasCache.getOrDefault(clave, Collections.emptyList())
-            .stream().mapToInt(MateriaSlot::horasSemanales).sum();
     }
 
     // ===============================================================
@@ -695,17 +696,27 @@ public class HorarioDAO {
             Set<String> ocup = ctx.slotsProf(prof.id());
             int asignadas = 0;
 
+            // Mejora: consolidar la actividad en los dias que el profesor YA tiene
+            // clase (en vez de dispersarla por toda la semana), y dentro de cada dia,
+            // preferir la hora pegada a un bloque ya ocupado (extender, no salpicar).
+            // Esto evita huecos como "lunes 14:00, martes 20:00, miercoles 17:00...".
+            List<String> diasOrdenados = new ArrayList<>(Arrays.asList(DIAS));
+            diasOrdenados.sort(Comparator.comparingInt(
+                (String dia) -> contarHorasOcupadasDia(ocup, dia, todasLasHoras)).reversed());
+
             outer:
-            for (String dia : DIAS) {
-                for (String hora : todasLasHoras) {
+            for (String dia : diasOrdenados) {
+                List<String> horasOrdenadas = ordenarHorasPorCercania(ocup, dia, todasLasHoras);
+                for (String hora : horasOrdenadas) {
                     if (asignadas >= aAsignar) break outer;
                     String slot = dia + "|" + hora;
                     if (!disp.contains(slot) || ocup.contains(slot)) continue;
 
                     ctx.marcarActividad(prof.id(), slot);
-                    ctx.acumularBloque(
-                        new BloqueProfesor(prof.rfc(), prof.nombre(), prof.actividadNombre(), "(Actividad)", dia, hora),
-                        new BloqueGrupo("(Actividad)", prof.actividadNombre(), prof.nombre(), dia, hora)
+                    ocup.add(slot); // reflejar de inmediato para que la siguiente hora
+                                     // de esta misma actividad se pegue a esta
+                    ctx.acumularBloqueActividad(
+                        new BloqueProfesor(prof.rfc(), prof.nombre(), prof.actividadNombre(), "(Actividad)", dia, hora)
                     );
                     asignadas++;
                 }
@@ -716,6 +727,36 @@ public class HorarioDAO {
                                   prof.nombre(), asignadas, prof.actividadNombre());
             }
         }
+    }
+
+    /** Cuenta cuantas horas del dia ya estan ocupadas para ese profesor (de cualquier turno). */
+    private int contarHorasOcupadasDia(Set<String> ocup, String dia, String[] todasLasHoras) {
+        int n = 0;
+        for (String hora : todasLasHoras) if (ocup.contains(dia + "|" + hora)) n++;
+        return n;
+    }
+
+    /**
+     * Ordena las horas de un dia de manera que las mas cercanas a un bloque ya
+     * ocupado queden primero (extender el bloque existente), en vez de recorrer
+     * las horas siempre de corrido 07:00->20:00 sin importar donde ya hay clases.
+     * Si el profesor no tiene nada ese dia todavia, se deja el orden natural.
+     */
+    private List<String> ordenarHorasPorCercania(Set<String> ocup, String dia, String[] todasLasHoras) {
+        List<Integer> ocupadasIdx = new ArrayList<>();
+        for (int i = 0; i < todasLasHoras.length; i++)
+            if (ocup.contains(dia + "|" + todasLasHoras[i])) ocupadasIdx.add(i);
+
+        if (ocupadasIdx.isEmpty()) return new ArrayList<>(Arrays.asList(todasLasHoras));
+
+        List<String> resultado = new ArrayList<>(Arrays.asList(todasLasHoras));
+        resultado.sort(Comparator.comparingInt(hora -> {
+            int i = Arrays.asList(todasLasHoras).indexOf(hora);
+            int distanciaMin = Integer.MAX_VALUE;
+            for (int oi : ocupadasIdx) distanciaMin = Math.min(distanciaMin, Math.abs(i - oi));
+            return distanciaMin;
+        }));
+        return resultado;
     }
 
     // ===============================================================
@@ -969,3 +1010,4 @@ public class HorarioDAO {
         return DIA_NORM.getOrDefault(sinTildes, dia.trim());
     }
 }
+
