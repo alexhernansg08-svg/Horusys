@@ -80,6 +80,57 @@ private void initCustomListeners() {
         Clave.setText("");
         NombreDeMateria.setText("");
 
+        // 1. REUBICACIÓN Y ESTILOS DE LOS BOTONES DE NETBEANS (Espaciado uniforme de 10px)
+        
+        // AGREGAR MATERIA (Vino)
+        Bg.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 90, 140, 40));
+        jPanel3.setBackground(new java.awt.Color(100, 0, 25));
+        BtnAgregarMateria.setForeground(new java.awt.Color(204, 160, 0));
+
+        // ACTUALIZAR (Verde)
+        Bg.add(jPanel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(170, 90, 140, 40));
+        jPanel4.setBackground(new java.awt.Color(34, 139, 34)); // Verde
+        BtnActualizar.setForeground(java.awt.Color.WHITE);
+
+        // BUSCAR (Dorado)
+        Bg.add(jPanel10, new org.netbeans.lib.awtextra.AbsoluteConstraints(320, 90, 140, 40));
+        jPanel10.setBackground(new java.awt.Color(204, 160, 0)); // Dorado
+        BtnBuscar.setForeground(new java.awt.Color(100, 0, 25)); // Texto Vino
+
+        // ELIMINAR (Vino)
+        Bg.add(jPanel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(620, 90, 140, 40));
+        jPanel5.setBackground(new java.awt.Color(100, 0, 25)); // Vino
+        BtnEliminar.setForeground(new java.awt.Color(204, 160, 0));
+
+        // LIMPIAR (Gris)
+        Bg.add(jPanel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(770, 90, 140, 40));
+        jPanel6.setBackground(new java.awt.Color(128, 128, 128)); // Gris
+        BtnLimpiar.setForeground(java.awt.Color.WHITE);
+
+        // REGRESAR AL MENU (Dorado)
+        Bg.add(jPanel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(920, 90, 160, 40));
+        jPanel7.setBackground(new java.awt.Color(204, 160, 0)); // Dorado
+        BtnRegresarMenu.setForeground(new java.awt.Color(100, 0, 25));
+
+        // 2. CREACIÓN DEL BOTÓN MÓDULOS (Verde) en X: 470
+        BtnModulos = new javax.swing.JLabel("MÓDULOS");
+        BtnModulos.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        BtnModulos.setForeground(java.awt.Color.WHITE);
+        BtnModulos.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        BtnModulos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+
+        javax.swing.JPanel panelBtnModulos = new javax.swing.JPanel(new java.awt.BorderLayout());
+        panelBtnModulos.setBackground(new java.awt.Color(34, 139, 34)); // Verde
+        panelBtnModulos.add(BtnModulos);
+
+        Bg.add(panelBtnModulos, new org.netbeans.lib.awtextra.AbsoluteConstraints(470, 90, 140, 40));
+        Bg.setComponentZOrder(panelBtnModulos, 0);
+
+        // Refrescar layout
+        Bg.revalidate();
+        Bg.repaint();
+
+        // 3. LISTENERS
         BtnAgregarMateria.addMouseListener(new MouseAdapter() { @Override public void mouseClicked(MouseEvent e) { agregar(); } });
         BtnActualizar.addMouseListener(new MouseAdapter() { @Override public void mouseClicked(MouseEvent e) { actualizar(); } });
         BtnEliminar.addMouseListener(new MouseAdapter() { @Override public void mouseClicked(MouseEvent e) { eliminar(); } });
@@ -95,23 +146,11 @@ private void initCustomListeners() {
             @Override public void mouseClicked(MouseEvent e) { buscar(); }
         });
 
-        // Creación manual del botón y contenedor de MÓDULOS (evita el error de variable privada)
-        BtnModulos = new javax.swing.JLabel("MÓDULOS");
-        BtnModulos.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        BtnModulos.setForeground(new java.awt.Color(204, 160, 0));
-        BtnModulos.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        BtnModulos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-
-        javax.swing.JPanel panelBtnModulos = new javax.swing.JPanel(new java.awt.BorderLayout());
-        panelBtnModulos.setBackground(new java.awt.Color(100, 0, 25));
-        panelBtnModulos.add(BtnModulos);
-
-        Bg.add(panelBtnModulos, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 90, 130, 40));
-
         BtnModulos.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) { abrirVentanaModulos(); }
         });
     }
+    
     private void abrirVentanaModulos() {
         ModulosWindow window = new ModulosWindow(mainWindow);
         window.addWindowListener(new java.awt.event.WindowAdapter() {
