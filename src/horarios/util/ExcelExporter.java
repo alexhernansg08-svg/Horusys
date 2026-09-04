@@ -5,6 +5,8 @@
 package horarios.util;
 
 import horarios.dao.HorarioConsultaDAO;
+import horarios.dao.GrupoDAO;
+import horarios.modelo.Grupo;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
@@ -13,10 +15,7 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.*;
 import java.util.*;
-/**
- *
- * @author axelp
- */
+
 /**
  * ============================================================
  *  UTILIDAD: ExcelExporter
@@ -86,9 +85,25 @@ public final class ExcelExporter {
                 "Sin datos", JOptionPane.WARNING_MESSAGE);
             return;
         }
+
+        // --- Recover datos faltantes automáticamente desde el GrupoDAO ---
+        GrupoDAO grupoDAO = new GrupoDAO();
+        Grupo gObj = grupoDAO.obtenerPorCodigo(grupo);
+
+        String especialidadFinal = (especialidad != null && !especialidad.isBlank()) 
+                ? especialidad 
+                : (gObj != null && gObj.getEspecialidadNombre() != null ? gObj.getEspecialidadNombre() : "GENERAL");
+
+        String tutorFinal = (tutor != null && !tutor.isBlank() && !tutor.equalsIgnoreCase("Sin Tutor")) 
+                ? tutor 
+                : (gObj != null && gObj.getTutorNombre() != null ? gObj.getTutorNombre() : "SIN TUTOR ASIGNADO");
+
+        String aulaFinal = (aula != null && !aula.isBlank()) ? aula : "S/A";
+
         String titulo = "HORARIO DE GRUPO: " + grupo;
-        String subtitulo = "AULA: " + aula + "     ESPECIALIDAD: " + especialidad;
-        String tutorLine = "TUTOR: " + tutor;
+        String subtitulo = "AULA: " + aulaFinal + "     ESPECIALIDAD: " + especialidadFinal;
+        String tutorLine = "TUTOR: " + tutorFinal;
+
         guardarExcel(parent, grupo,
             wb -> construirHoja(wb, titulo, subtitulo, tutorLine, filas));
     }
