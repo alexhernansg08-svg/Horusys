@@ -23,11 +23,8 @@ import javax.swing.JComboBox;
  */
 public class MateriasWindow extends javax.swing.JFrame {
     
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(MateriasWindow.class.getName());
+   private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(MateriasWindow.class.getName());
 
-    /**
-     * Creates new form MateriasWindow
-     */
     private MainWindow mainWindow;
     private int userId;
     private final MateriaController materiaController = new MateriaController();
@@ -35,14 +32,9 @@ public class MateriasWindow extends javax.swing.JFrame {
     private final ModuloController moduloController = new ModuloController();
     private DefaultTableModel tableModel;
 
-    // --- Combo de Modulo (Competencias laborales) ---
-    // Se agrega a mano (fuera del bloque que regenera el editor visual de
-    // NetBeans) para no arriesgar el diseño existente. Se posiciona en el
-    // mismo espacio libre que quedaba junto a "Horas semanales".
-    // Solo aplica a materias que SI son submodulos de Competencias laborales;
-    // el resto de las materias se deja en "(Ninguno)".
     private javax.swing.JLabel lblModulo;
     private javax.swing.JComboBox<Modulo> ComboModulo;
+    private javax.swing.JLabel BtnModulos;
 
     public MateriasWindow(MainWindow mainWindow, int userId) {
         this.mainWindow = mainWindow;
@@ -66,17 +58,17 @@ public class MateriasWindow extends javax.swing.JFrame {
         setLocationRelativeTo(null);
     }
 
-    private void initCustomListeners() {
+private void initCustomListeners() {
         tableModel = (DefaultTableModel) jTable1.getModel();
-        
+
         ComboModulo = new JComboBox<>();
-    lblModulo = new javax.swing.JLabel("Módulo:");
-    
-    lblModulo.setFont(new java.awt.Font("Segoe UI", 1, 12));
-    lblModulo.setForeground(new java.awt.Color(153, 0, 0));
-    Bg.add(lblModulo, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 230, -1, -1));
-    Bg.add(ComboModulo, new org.netbeans.lib.awtextra.AbsoluteConstraints(680, 230, 280, -1));
-        // Se agrega la columna "Módulo" al vuelo (no toca initComponents()).
+        lblModulo = new javax.swing.JLabel("Módulo:");
+
+        lblModulo.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        lblModulo.setForeground(new java.awt.Color(153, 0, 0));
+        Bg.add(lblModulo, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 230, -1, -1));
+        Bg.add(ComboModulo, new org.netbeans.lib.awtextra.AbsoluteConstraints(680, 230, 280, -1));
+
         tableModel.setColumnIdentifiers(new Object[]{"ID", "Clave", "Nombre", "Especialidad", "Semestre", "Hora/Sem", "Módulo"});
         jTable1.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) cargarSeleccionado();
@@ -98,53 +90,74 @@ public class MateriasWindow extends javax.swing.JFrame {
                 if (mainWindow != null) mainWindow.setVisible(true);
             } 
         });
-        
+
         BtnBuscar.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) { buscar(); }
         });
+
+        // Creación manual del botón y contenedor de MÓDULOS (evita el error de variable privada)
+        BtnModulos = new javax.swing.JLabel("MÓDULOS");
+        BtnModulos.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        BtnModulos.setForeground(new java.awt.Color(204, 160, 0));
+        BtnModulos.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        BtnModulos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+
+        javax.swing.JPanel panelBtnModulos = new javax.swing.JPanel(new java.awt.BorderLayout());
+        panelBtnModulos.setBackground(new java.awt.Color(100, 0, 25));
+        panelBtnModulos.add(BtnModulos);
+
+        Bg.add(panelBtnModulos, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 90, 130, 40));
+
+        BtnModulos.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { abrirVentanaModulos(); }
+        });
     }
-    
+    private void abrirVentanaModulos() {
+        ModulosWindow window = new ModulosWindow(mainWindow);
+        window.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                cargarModulos();
+                cargarDatos();
+            }
+        });
+        window.setVisible(true);
+    }
+
     private void buscar() {
-        // Creamos un campo de texto para la mini-ventana
         javax.swing.JTextField txtBusqueda = new javax.swing.JTextField(20);
         Object[] mensaje = {
             "Ingrese el nombre de la materia a buscar:", txtBusqueda
         };
-        
-        // Personalizamos los botones
+
         Object[] opciones = {"Buscar", "Cancelar"};
 
-        // Mostramos la ventana emergente
         int opcionElegida = JOptionPane.showOptionDialog(this, mensaje, "Buscar Materia",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, opciones, opciones);
 
-        // Si el usuario presionó "Buscar"
         if (opcionElegida == 0) {
             String termino = txtBusqueda.getText().trim();
-            
+
             if (!termino.isEmpty()) {
-                // Llamamos al controlador para buscar
                 java.util.List<Materia> resultados = materiaController.buscarPorNombre(termino);
                 cargarResultadosBusqueda(resultados);
-                
-                // Si no hay resultados, avisamos al usuario
+
                 if (resultados.isEmpty()) {
                     JOptionPane.showMessageDialog(this, "No se encontraron materias con ese nombre.", "Sin resultados", JOptionPane.INFORMATION_MESSAGE);
                 }
             } else {
-                // Si dejó el texto vacío y le dio a buscar, cargamos toda la tabla de nuevo
                 cargarDatos();
             }
         }
     }
 
-    // Este método limpia la tabla y mete solo las materias encontradas
     private void cargarResultadosBusqueda(java.util.List<Materia> lista) {
-        tableModel.setRowCount(0); // Limpiar la tabla
+        tableModel.setRowCount(0);
         for (Materia m : lista) {
             tableModel.addRow(new Object[]{
                 m.getIdMateria(), m.getClave(), m.getNombre(),
-                m.getEspecialidadNombre(), m.getIdSemestre(), m.getHorasSemanales()
+                m.getEspecialidadNombre(), m.getIdSemestre(), m.getHorasSemanales(),
+                m.getModuloEtiqueta() != null ? m.getModuloEtiqueta() : "—"
             });
         }
     }
@@ -207,7 +220,7 @@ public class MateriasWindow extends javax.swing.JFrame {
         m.setNombre(NombreDeMateria.getText().trim());
         Especialidad esp = (Especialidad) (Object) this.Especialidad.getSelectedItem();
         m.setIdEspecialidad(esp != null ? esp.getId() : 0);
-        
+
         m.setIdSemestre((Integer) Semestre.getValue());
         m.setHorasSemanales((Integer) HorasSemanales.getValue());
 
@@ -223,14 +236,9 @@ public class MateriasWindow extends javax.swing.JFrame {
             model.addElement(e);
         }
         this.Especialidad.setModel(model);
-        cargarModulos(); // refresca el combo de Modulo para la especialidad recien seleccionada
+        cargarModulos();
     }
 
-    /**
-     * Refresca el combo de Modulo segun la Especialidad seleccionada actualmente.
-     * Siempre incluye "(Ninguno)" primero (idModulo=0 como centinela), ya que
-     * la mayoria de las materias NO son submodulos de Competencias laborales.
-     */
     private void cargarModulos() {
         Especialidad esp = (Especialidad) (Object) this.Especialidad.getSelectedItem();
         DefaultComboBoxModel<Modulo> modelo = new DefaultComboBoxModel<>();
@@ -262,7 +270,7 @@ public class MateriasWindow extends javax.swing.JFrame {
     private void cargarSeleccionado() {
         int row = jTable1.getSelectedRow();
         if (row == -1) return;
-        
+
         Clave.setText((String) tableModel.getValueAt(row, 1));
         NombreDeMateria.setText((String) tableModel.getValueAt(row, 2));
         Semestre.setValue(tableModel.getValueAt(row, 4));
@@ -276,9 +284,8 @@ public class MateriasWindow extends javax.swing.JFrame {
                 break;
             }
         }
-        cargarModulos(); // refresca el combo para la especialidad recien seleccionada
+        cargarModulos();
 
-        // Buscar el modulo real de esta materia (la tabla solo trae su etiqueta de texto)
         String clave = (String) tableModel.getValueAt(row, 1);
         Materia completa = materiaController.buscarPorClave(clave);
         Integer idModulo = completa != null ? completa.getIdModulo() : null;
@@ -296,7 +303,7 @@ public class MateriasWindow extends javax.swing.JFrame {
         HorasSemanales.setValue(3);
         if (this.Especialidad.getItemCount() > 0) this.Especialidad.setSelectedIndex(0);
         cargarModulos();
-        if (ComboModulo.getItemCount() > 0) ComboModulo.setSelectedIndex(0); // "(Ninguno)"
+        if (ComboModulo.getItemCount() > 0) ComboModulo.setSelectedIndex(0);
         jTable1.clearSelection();
     }
 
