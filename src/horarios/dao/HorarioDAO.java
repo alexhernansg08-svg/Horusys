@@ -123,6 +123,12 @@ public class HorarioDAO {
             Contexto ctx = inicializarContexto(conn);
             List<GrupoSlot> grupos = cargarGrupos(conn);
 
+            // Prioridad de grupos: los que tienen mas horas-clase totales se procesan
+            // primero (mientras hay mas disponibilidad libre), en vez del orden fijo
+            // especialidad/semestre/codigo. Esto es lo que confirmo el plantel: la
+            // prioridad de asignacion es por carga horaria, no por orden alfabetico.
+            grupos.sort(Comparator.comparingInt((GrupoSlot g) -> totalHorasGrupo(g, ctx)).reversed());
+
             int total = grupos.size(), idx = 0;
             for (GrupoSlot grupo : grupos)
                 procesarGrupo(grupo, ++idx, total, ctx);
@@ -290,6 +296,15 @@ public class HorarioDAO {
                 lista.add(new GrupoSlot(rs.getInt("id"), rs.getString("codigo"), rs.getString("turno"), rs.getInt("especialidad_id"), rs.getInt("semestre")));
         }
         return lista;
+    }
+
+    /** Suma las horas_semanales de todas las materias que le tocan a este grupo
+     *  (segun su especialidad+semestre), para poder ordenar los grupos por carga
+     *  total antes de procesarlos. */
+    private int totalHorasGrupo(GrupoSlot g, Contexto ctx) {
+        String clave = g.especialidadId() + "|" + g.semestre();
+        return ctx.materiasCache.getOrDefault(clave, Collections.emptyList())
+                  .stream().mapToInt(MateriaSlot::horasSemanales).sum();
     }
 
     private void procesarGrupo(GrupoSlot grupo, int idx, int total, Contexto ctx) {
