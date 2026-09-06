@@ -87,15 +87,14 @@ public class LoginWindow extends javax.swing.JFrame {
         this.setExtendedState(JFrame.MAXIMIZED_BOTH);
         this.setLocationRelativeTo(null);
 
-        // 2. Cargar imagen del escudo cbtis22.jpg
-       ImageIcon logoEscudo = cargarEscudo("cbtis22.jpg", 65, 75);
+        // Cargar imagen del escudo cbtis22.jpg
+        ImageIcon logoEscudo = cargarEscudo(65, 75);
         if (logoEscudo != null) {
             jLabel1.setIcon(logoEscudo);
         } else {
-            jLabel1.setIcon(new EscudoInstitucionalIcon(50, 60)); // Respaldo si no encuentra la imagen
+            jLabel1.setIcon(new EscudoInstitucionalIcon(50, 60)); // Respaldo si no se encuentra el archivo
         }
         jLabel1.setIconTextGap(15);
-
         // 3. Iconos de campos y botones
         jLabel3.setIcon(new PersonaIcon(18, 18));
         jLabel3.setIconTextGap(8);
@@ -244,56 +243,43 @@ public class LoginWindow extends javax.swing.JFrame {
     /**
      * Carga y escala cbtis22.jpg imprimiendo diagnósticos en la consola de NetBeans.
      */
-    private ImageIcon cargarEscudo(String cbtis22jpg, int ancho, int alto) {
-        String base = "cbtis22";
-        String[] extensiones = {".jpg", ".JPG", ".jpeg", ".png", ".PNG"};
+    /**
+     * Carga y escala el escudo cbtis22.jpg ubicado en el paquete base 'horarios'.
+     */
+    private ImageIcon cargarEscudo(int ancho, int alto) {
+        String rutaResource = "/horarios/cbtis22.jpg";
 
-        System.out.println(">>> [DEBUG LOGO] Buscando imagen del escudo...");
-        System.out.println(">>> [DEBUG LOGO] Directorio de ejecución: " + System.getProperty("user.dir"));
-
-        // 1. Búsqueda por Classpath (Dentro de src/ y paquetes)
-        for (String ext : extensiones) {
-            String nombre = base + ext;
-            String[] rutasResource = {
-                "/horarios/vista/" + nombre,
-                "/" + nombre,
-                nombre
-            };
-
-            for (String res : rutasResource) {
-                java.net.URL url = getClass().getResource(res);
-                if (url != null) {
-                    System.out.println("✅ ¡IMAGEN ENCONTRADA EN CLASSPATH!: " + url);
-                    Image img = new ImageIcon(url).getImage();
-                    return new ImageIcon(img.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH));
-                }
+        try {
+            // 1. Cargar desde el classpath (funciona tanto en desarrollo como dentro del archivo .jar compilado)
+            java.net.URL url = getClass().getResource(rutaResource);
+            if (url != null) {
+                Image img = new ImageIcon(url).getImage();
+                return new ImageIcon(img.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH));
             }
-        }
 
-        // 2. Búsqueda en disco duro (Rutas relativas)
-        for (String ext : extensiones) {
-            String nombre = base + ext;
+            // 2. Búsqueda de respaldo directa en el sistema de archivos del proyecto
             String[] rutasDisco = {
-                "src/horarios/vista/" + nombre,
-                "src/" + nombre,
-                nombre,
-                "Horusys/src/horarios/vista/" + nombre
+                "src/horarios/cbtis22.jpg",
+                "Horusys-master/src/horarios/cbtis22.jpg",
+                "Horusys/src/horarios/cbtis22.jpg"
             };
 
             for (String ruta : rutasDisco) {
-                java.io.File file = new java.io.File(ruta);
-                if (file.exists()) {
-                    System.out.println("✅ ¡IMAGEN ENCONTRADA EN DISCO!: " + file.getAbsolutePath());
-                    Image img = new ImageIcon(file.getAbsolutePath()).getImage();
+                java.io.File archivo = new java.io.File(ruta);
+                if (archivo.exists()) {
+                    Image img = new ImageIcon(archivo.getAbsolutePath()).getImage();
                     return new ImageIcon(img.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH));
                 }
             }
+        } catch (Exception e) {
+            logger.log(java.util.logging.Level.WARNING, "Error al cargar la imagen cbtis22.jpg", e);
         }
 
-        System.err.println("❌ [DEBUG LOGO] No se encontró ninguna imagen 'cbtis22' (.jpg/.png) en el proyecto.");
-        return null;
+        return null; // Retorna null si la imagen no existe para usar el escudo dibujado
     }
 
+    
+    
     private void initCustomListeners() {
         configurarHover(jPanel4, COLOR_VERDE, COLOR_VERDE.brighter(), this::intentarLogin);
         configurarHover(jPanel5, COLOR_DORADO, COLOR_DORADO.brighter(), this::abrirRegistro);
@@ -527,6 +513,7 @@ public class LoginWindow extends javax.swing.JFrame {
         @Override public int getIconWidth() { return w; }
         @Override public int getIconHeight() { return h; }
     }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
