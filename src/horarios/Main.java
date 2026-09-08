@@ -12,7 +12,7 @@ import java.util.logging.Logger;
  *
  * @author axelp
  */
-/**
+/**AAAc
  * ============================================================
  *  CLASE PRINCIPAL - Punto de entrada de la aplicacion
  * ============================================================
